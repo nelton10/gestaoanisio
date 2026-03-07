@@ -36,30 +36,36 @@ const SaidasTab: React.FC<SaidasTabProps> = ({
   const suspendedInTurma = suspensions.filter(s => s.turma === selectedTurma);
 
   const finalizeExit = async (exit: ActiveExit, registerOccurrence: boolean, elapsedMins = 0) => {
-    const dur = elapsedMins > 0 ? elapsedMins : Math.floor((Date.now() - exit.startTime) / 60000);
-    const now = new Date();
-    const ts = now.toLocaleString('pt-PT');
-    const raw = now.getTime();
+    try {
+      const dur = elapsedMins > 0 ? elapsedMins : Math.floor((Date.now() - exit.startTime) / 60000);
+      const now = new Date();
+      const ts = now.toLocaleString('pt-PT');
+      const raw = now.getTime();
 
-    await store.addHistoryRecord({
-      id: store.generateId(), alunoId: exit.alunoId, alunoNome: exit.alunoNome, turma: exit.turma,
-      categoria: 'saida', detalhe: `${exit.destino} (${dur} min)${exit.isEmergency ? ' [EMERGÊNCIA]' : ''}`,
-      timestamp: ts, rawTimestamp: raw, professor: exit.professor || username, autorRole: exit.autorRole || userRole
-    });
-
-    if (registerOccurrence) {
       await store.addHistoryRecord({
         id: store.generateId(), alunoId: exit.alunoId, alunoNome: exit.alunoNome, turma: exit.turma,
-        categoria: 'ocorrencia', detalhe: `Demora na saída (${dur} min) - Destino: ${exit.destino}`,
-        timestamp: ts, rawTimestamp: raw + 1, professor: exit.professor || username, autorRole: exit.autorRole || userRole
+        categoria: 'saida', detalhe: `${exit.destino} (${dur} min)${exit.isEmergency ? ' [EMERGÊNCIA]' : ''}`,
+        timestamp: ts, rawTimestamp: raw, professor: exit.professor || username, autorRole: exit.autorRole || userRole
       });
-    }
 
-    await store.removeActiveExit(exit.id);
-    setOvertimeModal(null);
-    await refreshData();
-    notify("Retorno registado.");
+      if (registerOccurrence) {
+        await store.addHistoryRecord({
+          id: store.generateId(), alunoId: exit.alunoId, alunoNome: exit.alunoNome, turma: exit.turma,
+          categoria: 'ocorrencia', detalhe: `Demora na saída (${dur} min) - Destino: ${exit.destino}`,
+          timestamp: ts, rawTimestamp: raw + 1, professor: exit.professor || username, autorRole: exit.autorRole || userRole
+        });
+      }
+
+      await store.removeActiveExit(exit.id);
+      setOvertimeModal(null);
+      await refreshData();
+      notify("Retorno registado.");
+    } catch (err: any) {
+      console.error("FinalizeExit Error:", err);
+      notify("Erro ao registar retorno: " + err.message);
+    }
   };
+
 
   const handleReturnClick = async (exit: ActiveExit) => {
     const elapsedSecs = Math.floor((Date.now() - exit.startTime) / 1000);
@@ -97,18 +103,24 @@ const SaidasTab: React.FC<SaidasTabProps> = ({
   };
 
   const handleNewExit = async () => {
-    const a = alunos.find(x => x.id === selectedAlunoId);
-    if (!a) return notify("Selecione um aluno.");
-    await store.addActiveExit({
-      id: store.generateId(), alunoId: a.id, alunoNome: a.nome, turma: a.turma,
-      destino: destinoSaida, startTime: Date.now(), professor: username,
-      autorRole: userRole, isEmergency: !!activeBlock && isEmergencyMode
-    });
-    setSelectedAlunoId('');
-    setIsEmergencyMode(false);
-    await refreshData();
-    notify(activeBlock && isEmergencyMode ? "Emergência Registada!" : "Saída Autorizada!");
+    try {
+      const a = alunos.find(x => x.id === selectedAlunoId);
+      if (!a) return notify("Selecione um aluno.");
+      await store.addActiveExit({
+        id: store.generateId(), alunoId: a.id, alunoNome: a.nome, turma: a.turma,
+        destino: destinoSaida, startTime: Date.now(), professor: username,
+        autorRole: userRole, isEmergency: !!activeBlock && isEmergencyMode
+      });
+      setSelectedAlunoId('');
+      setIsEmergencyMode(false);
+      await refreshData();
+      notify(activeBlock && isEmergencyMode ? "Emergência Registada!" : "Saída Autorizada!");
+    } catch (err: any) {
+      console.error("HandleNewExit Error:", err);
+      notify("Erro ao autorizar saída: " + err.message);
+    }
   };
+
 
   return (
     <div className="space-y-5 animate-slide-up">

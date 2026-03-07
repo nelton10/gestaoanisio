@@ -20,10 +20,12 @@ const AnaliseTab: React.FC<AnaliseTabProps> = ({ records, turmasExistentes, stat
       if (selectedTurma && r.turma !== selectedTurma) return false;
       if (filtroBuscaNome && !r.alunoNome?.toLowerCase().includes(filtroBuscaNome.toLowerCase())) return false;
       if (filtroDataInicio || filtroDataFim) {
+        if (!r.rawTimestamp) return false;
         const rDate = new Date(r.rawTimestamp); rDate.setHours(0, 0, 0, 0);
         if (filtroDataInicio) { const d = new Date(filtroDataInicio); d.setHours(0, 0, 0, 0); if (rDate < d) return false; }
         if (filtroDataFim) { const d = new Date(filtroDataFim); d.setHours(23, 59, 59, 999); if (rDate > d) return false; }
       }
+
       return true;
     });
   }, [records, selectedTurma, filtroBuscaNome, filtroDataInicio, filtroDataFim]);
@@ -34,8 +36,9 @@ const AnaliseTab: React.FC<AnaliseTabProps> = ({ records, turmasExistentes, stat
     const turmaStats: Record<string, number> = {};
     filteredHistory.forEach(r => {
       if (r.categoria === 'ocorrencia') {
-        const tipo = r.detalhe.split(' [')[0] || "?";
+        const tipo = (r.detalhe || "").split(' [')[0] || "?";
         occTypes[tipo] = (occTypes[tipo] || 0) + 1;
+
         if (r.alunoNome) infratores[r.alunoNome] = (infratores[r.alunoNome] || 0) + 1;
         if (r.turma) turmaStats[r.turma] = (turmaStats[r.turma] || 0) + 1;
       }

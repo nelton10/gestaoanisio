@@ -15,9 +15,20 @@ import AdminTab from '@/components/tabs/AdminTab';
 const Index = () => {
   const state = useAppState();
 
+  if (state.isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-6" />
+        <h2 className="text-xl font-black text-foreground tracking-tight">Carregando Sistema...</h2>
+        <p className="text-xs text-muted-foreground mt-2 font-bold uppercase tracking-widest">Sincronizando com a Nuvem</p>
+      </div>
+    );
+  }
+
   if (!state.authState.isAuthenticated) {
     return <LoginScreen onLogin={state.login} />;
   }
+
 
   return (
     <div className="min-h-screen min-h-[100dvh] bg-background flex flex-col font-sans text-foreground">
@@ -76,9 +87,10 @@ const Index = () => {
           <AnaliseTab records={state.records} turmasExistentes={state.turmasExistentes} statsSummary={state.statsSummary} />
         )}
         {state.activeTab === 'admin' && (
-          <AdminTab alunos={state.alunos} config={state.config} turmasExistentes={state.turmasExistentes}
+          <AdminTab alunos={state.alunos} history={state.records}
             notify={state.notify} refreshData={state.refreshData} />
         )}
+
       </main>
     </div>
   );

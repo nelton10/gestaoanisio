@@ -27,12 +27,15 @@ export function useAppState() {
   const refreshData = useCallback(async () => {
     try {
       const cfg = await store.getConfig();
-      setAlunos(cfg.alunosList || []);
-      setConfig({
-        autoBlocks: cfg.autoBlocks || [],
-        exitLimitMinutes: cfg.exitLimitMinutes || 15,
-        passwords: cfg.passwords || { admin: 'gestao', professor: 'prof', apoio: 'apoio' }
-      });
+      if (cfg) {
+        setAlunos(cfg.alunosList || []);
+        setConfig({
+          autoBlocks: cfg.autoBlocks || [],
+          exitLimitMinutes: cfg.exitLimitMinutes || 15,
+          passwords: cfg.passwords || { admin: 'gestao', professor: 'prof', apoio: 'apoio' }
+        });
+      }
+
 
       const [exits, hist, coord, lib, susp, avs] = await Promise.all([
         store.getActiveExits(),

@@ -17,7 +17,8 @@ const PesquisaTab: React.FC<PesquisaTabProps> = ({ alunos, records, turmasExiste
     const map: Record<string, { id: string; nome: string; turma: string; saidas: number; ocorrencias: number; meritos: number; atrasos: number }> = {};
     records.forEach(r => {
       if (!r.alunoId) return;
-      if (!map[r.alunoId]) map[r.alunoId] = { id: r.alunoId, nome: r.alunoNome || "?", turma: r.turma, saidas: 0, ocorrencias: 0, meritos: 0, atrasos: 0 };
+      if (!map[r.alunoId]) map[r.alunoId] = { id: r.alunoId, nome: r.alunoNome || "?", turma: r.turma || "?", saidas: 0, ocorrencias: 0, meritos: 0, atrasos: 0 };
+
       if (r.categoria === 'saida') map[r.alunoId].saidas++;
       if (r.categoria === 'ocorrencia') map[r.alunoId].ocorrencias++;
       if (r.categoria === 'merito') map[r.alunoId].meritos++;
