@@ -8,10 +8,10 @@ import {
   KeyRound, 
   Lock, 
   FileUp, 
-  Download, // Ícone de exportação
+  Download,
   Clock,
   RotateCcw,
-  History // Ícone para a seção de ocorrências
+  History 
 } from 'lucide-react';
 import * as store from '@/lib/store';
 import { Aluno, AppConfig } from '@/types';
@@ -19,14 +19,14 @@ import { Aluno, AppConfig } from '@/types';
 interface AdminTabProps {
   alunos: Aluno[];
   config: AppConfig;
-  history: any[]; // Adicionado para gerenciar as ocorrências
+  history: any[]; 
   turmasExistentes: string[];
   notify: (msg: string) => void;
   refreshData: () => void;
 }
 
 const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExistentes, notify, refreshData }) => {
-  // States existentes
+  // Estados de Formulário e UI
   const [nomeNovoAluno, setNomeNovoAluno] = useState('');
   const [turmaNovoAluno, setTurmaNovoAluno] = useState('');
   const [modoNovaTurma, setModoNovaTurma] = useState(false);
@@ -43,11 +43,10 @@ const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExis
   const [editPasswords, setEditPasswords] = useState(config.passwords);
   const [isRestoreMode, setIsRestoreMode] = useState(false);
   
-  // Refs para os inputs de ficheiro
   const fileInputRef = useRef<HTMLInputElement>(null);
   const historyInputRef = useRef<HTMLInputElement>(null);
 
-  // --- LÓGICA DE ALUNOS ---
+  // --- GESTÃO DE ALUNOS ---
   const addStudent = () => {
     if (!nomeNovoAluno || !turmaNovoAluno) return notify("Preencha nome e turma.");
     const novo = { id: store.generateId(), nome: nomeNovoAluno.toUpperCase(), turma: turmaNovoAluno.toUpperCase() };
@@ -65,11 +64,18 @@ const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExis
 
   const deleteEntireTurma = () => {
     if (!adminTurmaFiltro) return;
-    if (confirm(`PERIGO: Você está prestes a apagar TODOS os alunos da turma ${adminTurmaFiltro}. Confirma?`)) {
+    if (confirm(`ATENÇÃO: Você vai apagar TODOS os alunos da turma ${adminTurmaFiltro}. Confirma?`)) {
       store.saveConfig({ alunosList: alunos.filter(a => a.turma !== adminTurmaFiltro) });
       setAdminTurmaFiltro(''); setSelectedAdminAlunos([]);
       refreshData(); notify(`Turma ${adminTurmaFiltro} removida!`);
     }
+  };
+
+  const transferStudent = () => {
+    if (!alunoEditando || !novaTurmaDestino) return notify("Selecione destino.");
+    store.saveConfig({ alunosList: alunos.map(a => a.id === alunoEditando.id ? { ...a, turma: novaTurmaDestino.toUpperCase() } : a) });
+    setTurmaOrigem(''); setAlunoEditando(null);
+    refreshData(); notify("Transferência concluída!");
   };
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,26 +104,20 @@ const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExis
     reader.readAsText(file);
   };
 
-  // --- LÓGICA DE OCORRÊNCIAS (NOVO) ---
+  // --- GESTÃO DE OCORRÊNCIAS (PADRÃO CSV) ---
   const exportOcorrencias = () => {
-    if (!history.length) return notify("Não há ocorrências para exportar.");
-    
-    // Cabeçalho conforme seus arquivos de backup
+    if (!history.length) return notify("Sem dados para exportar.");
     let csv = "DATA,TURMA,NOME,DESCRIÇÃO\n";
-    
     history.forEach(item => {
-      const data = `"${item.data || ''}"`; // Aspas para conter a vírgula da data
-      const turma = item.turma || '';
-      const nome = item.nome || '';
-      const desc = `"${(item.descricao || '').replace(/"/g, '""')}"`; // Escapa aspas internas
-      csv += `${data},${turma},${nome},${desc}\n`;
+      const data = `"${item.data || ''}"`;
+      const desc = `"${(item.descricao || '').replace(/"/g, '""')}"`;
+      csv += `${data},${item.turma || ''},${item.nome || ''},${desc}\n`;
     });
-
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `backup_ocorrencias_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `backup_sistema_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -127,19 +127,13 @@ const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExis
   const restoreOcorrencias = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const content = evt.target?.result as string;
-      const lines = content.split('\n');
+      const lines = (evt.target?.result as string).split('\n');
       const restoredHistory: any[] = [];
-
       lines.forEach((line, idx) => {
-        if (idx === 0 || !line.trim()) return; // Pula cabeçalho ou linhas vazias
-        
-        // Regex para separar por vírgula respeitando aspas
+        if (idx === 0 || !line.trim()) return;
         const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-        
         if (parts && parts.length >= 4) {
           restoredHistory.push({
             id: store.generateId(),
@@ -147,15 +141,13 @@ const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExis
             turma: parts[1],
             nome: parts[2],
             descricao: parts[3].replace(/"/g, ''),
-            timestamp: Date.now() // Timestamp aproximado para ordenação
+            timestamp: Date.now()
           });
         }
       });
-
       if (restoredHistory.length) {
         store.saveConfig({ history: restoredHistory });
-        refreshData();
-        notify(`${restoredHistory.length} ocorrências restauradas!`);
+        refreshData(); notify(`${restoredHistory.length} registros restaurados!`);
       }
       if (historyInputRef.current) historyInputRef.current.value = '';
     };
@@ -164,7 +156,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExis
 
   return (
     <div className="space-y-6 pb-10 animate-fade-in">
-      {/* Modal de Confirmação para Alunos */}
+      {/* Modal de Exclusão */}
       {deleteModal && (
         <div className="fixed inset-0 z-[120] bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="glass-strong rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-scale-in">
@@ -178,10 +170,10 @@ const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExis
         </div>
       )}
 
-      {/* Seção de Alunos - Igual ao anterior */}
+      {/* 1. Novo Aluno */}
       <div className="glass rounded-3xl p-6 shadow-lg space-y-5">
         <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><UserPlus size={18} className="text-primary" /> Novo Aluno</h3>
-        <input type="text" placeholder="Nome Completo" className="w-full p-4 bg-secondary rounded-2xl border border-border outline-none"
+        <input type="text" placeholder="Nome Completo" className="w-full p-4 bg-secondary rounded-2xl border border-border outline-none focus:ring-2 focus:ring-primary/20"
           value={nomeNovoAluno} onChange={e => setNomeNovoAluno(e.target.value)} />
         <div className="flex gap-2.5">
           <select className="flex-1 p-4 bg-secondary rounded-2xl border border-border outline-none font-semibold text-foreground appearance-none"
@@ -189,50 +181,167 @@ const AdminTab: React.FC<AdminTabProps> = ({ alunos, config, history, turmasExis
             <option value="">Escolher Turma...</option>
             {turmasExistentes.map(t => <option key={t}>{t}</option>)}
           </select>
-          <button onClick={() => setModoNovaTurma(!modoNovaTurma)} className="bg-secondary p-4 rounded-2xl">
+          <button onClick={() => setModoNovaTurma(!modoNovaTurma)} className="bg-secondary p-4 rounded-2xl transition-colors hover:text-primary">
             <PlusCircle size={20} />
           </button>
         </div>
         {modoNovaTurma && <input type="text" placeholder="Criar Turma (Ex: 9A)" className="w-full p-4 bg-card border-2 border-primary/30 rounded-2xl outline-none"
           value={turmaNovoAluno} onChange={e => setTurmaNovoAluno(e.target.value)} />}
-        <button onClick={addStudent} className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold">Adicionar</button>
+        <button onClick={addStudent} className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold shadow-lg active:scale-95">Adicionar</button>
       </div>
 
-      {/* Seção CSV Alunos */}
+      {/* 2. Base de Alunos (CSV) */}
       <div className="glass rounded-3xl p-6 shadow-lg space-y-4">
-        <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><FileUp size={18} className="text-primary" /> Base de Alunos (CSV)</h3>
+        <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><FileUp size={18} className="text-primary" /> Gestão de Alunos (CSV)</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button onClick={() => { setIsRestoreMode(false); fileInputRef.current?.click(); }} 
             className="py-4 bg-secondary text-foreground rounded-2xl font-bold border border-border text-sm flex items-center justify-center gap-2">
-            <FileUp size={16} /> Importar
+            <FileUp size={16} /> Importar Dados
           </button>
-          <button onClick={() => { if(confirm("Apagar todos os alunos e substituir?")) { setIsRestoreMode(true); fileInputRef.current?.click(); } }} 
+          <button onClick={() => { if(confirm("Apagar todos os alunos e substituir pelo arquivo?")) { setIsRestoreMode(true); fileInputRef.current?.click(); } }} 
             className="py-4 bg-destructive/10 text-destructive rounded-2xl font-bold border border-destructive/20 text-sm flex items-center justify-center gap-2">
-            <RotateCcw size={16} /> Restaurar
+            <RotateCcw size={16} /> Restaurar Base
           </button>
         </div>
         <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCsvUpload} className="hidden" />
       </div>
 
-      {/* --- NOVO: SEÇÃO DE OCORRÊNCIAS --- */}
+      {/* 3. Ocorrências (CSV) */}
       <div className="glass rounded-3xl p-6 shadow-lg space-y-4">
-        <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><History size={18} className="text-warning" /> Histórico de Ocorrências</h3>
-        <p className="text-xs text-muted-foreground italic">Formato compatível com: SAIDA, ATRASO, OCORRENCIA</p>
+        <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><History size={18} className="text-warning" /> Histórico do Sistema (CSV)</h3>
+        <p className="text-xs text-muted-foreground italic">Padrão: DATA,TURMA,NOME,DESCRIÇÃO</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button onClick={exportOcorrencias} 
             className="py-4 bg-secondary text-foreground rounded-2xl font-bold border border-border text-sm flex items-center justify-center gap-2">
-            <Download size={16} /> Exportar CSV
+            <Download size={16} /> Exportar Backup
           </button>
-          <button onClick={() => { if(confirm("Isso substituirá TODO o histórico atual pelo arquivo. Continuar?")) historyInputRef.current?.click(); }} 
+          <button onClick={() => { if(confirm("Substituir TODO o histórico pelo arquivo?")) historyInputRef.current?.click(); }} 
             className="py-4 bg-warning/10 text-warning rounded-2xl font-bold border border-warning/20 text-sm flex items-center justify-center gap-2">
-            <RotateCcw size={16} /> Restaurar CSV
+            <RotateCcw size={16} /> Restaurar Backup
           </button>
         </div>
         <input type="file" accept=".csv" ref={historyInputRef} onChange={restoreOcorrencias} className="hidden" />
       </div>
 
-      {/* Outras seções (Transferência, Limpeza, etc.) permanecem iguais conforme seu código anterior */}
-      {/* ... */}
+      {/* 4. Transferência */}
+      <div className="glass rounded-3xl p-6 shadow-lg space-y-5">
+        <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><MoveHorizontal size={18} className="text-warning" /> Transferência de Sala</h3>
+        <select className="w-full p-4 bg-secondary rounded-2xl border border-border outline-none font-semibold text-foreground appearance-none"
+          onChange={e => { setTurmaOrigem(e.target.value); setAlunoEditando(null); }} value={turmaOrigem}>
+          <option value="">Turma de Origem...</option>
+          {turmasExistentes.map(t => <option key={t}>{t}</option>)}
+        </select>
+        {turmaOrigem && (
+          <select className="w-full p-4 bg-secondary rounded-2xl border border-border outline-none font-semibold text-foreground appearance-none"
+            onChange={e => setAlunoEditando(alunos.find(a => a.id === e.target.value) || null)} value={alunoEditando?.id || ''}>
+            <option value="">Selecionar Aluno...</option>
+            {alunos.filter(a => a.turma === turmaOrigem).map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+          </select>
+        )}
+        {alunoEditando && (
+          <div className="bg-warning/10 p-5 rounded-2xl border border-warning/20 space-y-3 animate-scale-in">
+            <p className="text-xs font-bold text-foreground">Transferir <span className="font-black">{alunoEditando.nome}</span> para:</p>
+            <div className="flex gap-2">
+              <select className="flex-1 p-3.5 border border-warning/20 rounded-xl text-sm font-semibold bg-card text-foreground outline-none" onChange={e => setNovaTurmaDestino(e.target.value)}>
+                <option value="">Destino...</option>
+                {turmasExistentes.map(t => <option key={t}>{t}</option>)}
+              </select>
+              <button onClick={transferStudent} className="bg-warning text-warning-foreground px-5 rounded-xl text-xs font-bold shadow-md active:scale-95">Confirmar</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 5. Limpeza de Registros */}
+      <div className="glass rounded-3xl p-6 shadow-lg space-y-5 border-destructive/10">
+        <h3 className="font-black text-sm text-destructive flex items-center gap-2"><Trash2 size={18} /> Limpeza de Registos</h3>
+        <div className="flex gap-2">
+          <select className="flex-1 p-4 bg-secondary rounded-2xl border border-border outline-none font-semibold text-foreground appearance-none"
+            value={adminTurmaFiltro} onChange={e => { setAdminTurmaFiltro(e.target.value); setSelectedAdminAlunos([]); }}>
+            <option value="">Filtrar Turma...</option>
+            {turmasExistentes.map(t => <option key={t}>{t}</option>)}
+          </select>
+          {adminTurmaFiltro && (
+            <button onClick={deleteEntireTurma} className="px-5 bg-destructive text-destructive-foreground rounded-2xl shadow-lg active:scale-95" title="Apagar Turma Completa">
+              <Trash2 size={20} />
+            </button>
+          )}
+        </div>
+        {adminTurmaFiltro && (
+          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto no-scrollbar">
+            {alunos.filter(a => a.turma === adminTurmaFiltro).map(a => (
+              <button key={a.id} onClick={() => setSelectedAdminAlunos(p => p.includes(a.id) ? p.filter(x => x !== a.id) : [...p, a.id])}
+                className={`p-3 rounded-xl text-xs font-bold border text-left transition-all
+                ${selectedAdminAlunos.includes(a.id) ? 'bg-destructive border-destructive text-destructive-foreground' : 'bg-secondary text-foreground border-border'}`}>
+                {a.nome}
+              </button>
+            ))}
+          </div>
+        )}
+        {selectedAdminAlunos.length > 0 && (
+          <button onClick={() => setDeleteModal(true)} className="w-full py-4 bg-destructive text-destructive-foreground rounded-2xl font-bold shadow-lg active:scale-95 text-sm">
+            Apagar {selectedAdminAlunos.length} Selecionado(s)
+          </button>
+        )}
+      </div>
+
+      {/* 6. Limite de Saída */}
+      <div className="glass rounded-3xl p-6 shadow-lg space-y-5">
+        <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><Clock size={18} className="text-primary" /> Limite de Saída</h3>
+        <div className="flex items-center gap-3">
+          <input type="number" value={tempLimit} onChange={e => setTempLimit(Number(e.target.value))}
+            className="w-24 p-4 bg-secondary rounded-2xl border border-border outline-none text-center font-bold text-lg text-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">minutos</span>
+          <button onClick={() => { store.saveConfig({ exitLimitMinutes: tempLimit }); refreshData(); notify("Limite atualizado!"); }}
+            className="ml-auto bg-primary text-primary-foreground px-5 py-3 rounded-xl text-xs font-bold shadow-md active:scale-95">Salvar</button>
+        </div>
+      </div>
+
+      {/* 7. Bloqueios Automáticos */}
+      <div className="glass rounded-3xl p-6 shadow-lg space-y-5">
+        <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><Lock size={18} className="text-destructive" /> Bloqueios Automáticos</h3>
+        {config.autoBlocks.map((block, idx) => (
+          <div key={idx} className="flex items-center justify-between bg-secondary p-3 rounded-xl">
+            <span className="text-xs font-bold text-foreground">{block.label}: {block.start} - {block.end}</span>
+            <button onClick={() => {
+              const blocks = config.autoBlocks.filter((_, i) => i !== idx);
+              store.saveConfig({ autoBlocks: blocks }); refreshData();
+            }} className="text-destructive p-1"><Trash2 size={14} /></button>
+          </div>
+        ))}
+        <div className="grid grid-cols-3 gap-2">
+          <input type="time" value={novoBlockStart} onChange={e => setNovoBlockStart(e.target.value)}
+            className="p-3 bg-secondary rounded-xl border border-border text-xs font-bold text-foreground outline-none" />
+          <input type="time" value={novoBlockEnd} onChange={e => setNovoBlockEnd(e.target.value)}
+            className="p-3 bg-secondary rounded-xl border border-border text-xs font-bold text-foreground outline-none" />
+          <input type="text" placeholder="Nome" value={novoBlockLabel} onChange={e => setNovoBlockLabel(e.target.value)}
+            className="p-3 bg-secondary rounded-xl border border-border text-xs font-bold text-foreground outline-none" />
+        </div>
+        <button onClick={() => {
+          if (!novoBlockStart || !novoBlockEnd || !novoBlockLabel) return notify("Preencha todos os campos.");
+          store.saveConfig({ autoBlocks: [...config.autoBlocks, { start: novoBlockStart, end: novoBlockEnd, label: novoBlockLabel }] });
+          setNovoBlockStart(''); setNovoBlockEnd(''); setNovoBlockLabel('');
+          refreshData(); notify("Bloqueio adicionado!");
+        }} className="w-full py-3 bg-destructive/10 text-destructive rounded-2xl font-bold border border-destructive/20 active:scale-95 text-sm">
+          Adicionar Bloqueio
+        </button>
+      </div>
+
+      {/* 8. PINs de Acesso */}
+      <div className="glass rounded-3xl p-6 shadow-lg space-y-5">
+        <h3 className="font-black text-sm flex items-center gap-2 text-foreground"><KeyRound size={18} className="text-warning" /> PINs de Acesso</h3>
+        {(['admin', 'professor', 'apoio'] as const).map(role => (
+          <div key={role} className="flex items-center gap-3">
+            <span className="text-xs font-bold text-muted-foreground uppercase w-20">{role}</span>
+            <input type="text" value={editPasswords[role]} onChange={e => setEditPasswords(p => ({ ...p, [role]: e.target.value }))}
+              className="flex-1 p-3 bg-secondary rounded-xl border border-border text-sm font-bold outline-none text-foreground" />
+          </div>
+        ))}
+        <button onClick={() => { store.saveConfig({ passwords: editPasswords }); refreshData(); notify("PINs atualizados!"); }}
+          className="w-full py-3 bg-warning text-warning-foreground rounded-2xl font-bold shadow-md active:scale-95 text-sm">
+          Salvar PINs
+        </button>
+      </div>
     </div>
   );
 };
