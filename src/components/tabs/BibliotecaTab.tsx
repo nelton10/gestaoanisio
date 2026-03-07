@@ -7,36 +7,36 @@ interface BibliotecaTabProps {
   libraryQueue: LibraryItem[];
   username: string;
   notify: (msg: string) => void;
-  refreshData: () => void;
+  refreshData: () => Promise<void>;
 }
 
 const BibliotecaTab: React.FC<BibliotecaTabProps> = ({ libraryQueue, username, notify, refreshData }) => {
-  const handleAction = (item: LibraryItem, actionType: string) => {
+  const handleAction = async (item: LibraryItem, actionType: string) => {
     const now = new Date(); const ts = now.toLocaleString('pt-PT'); const raw = now.getTime();
     if (actionType === 'nao_apareceu') {
-      store.addHistoryRecord({
+      await store.addHistoryRecord({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
         categoria: 'ocorrencia', detalhe: 'Faltou à biblioteca após encaminhamento.',
         timestamp: ts, rawTimestamp: raw, professor: username
       });
-      store.addCoordinationItem({
+      await store.addCoordinationItem({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
         motivo: "NÃO APARECEU NA BIBLIOTECA (REINCIDENTE)", timestamp: ts, professor: username
       });
     } else if (actionType === 'negativo') {
-      store.addHistoryRecord({
+      await store.addHistoryRecord({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
         categoria: 'ocorrencia', detalhe: 'Comportamento negativo na biblioteca.',
         timestamp: ts, rawTimestamp: raw, professor: username
       });
     }
-    store.addHistoryRecord({
+    await store.addHistoryRecord({
       id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
       categoria: 'medida', detalhe: `BIBLIOTECA: Resultado ${actionType.toUpperCase()}`,
       timestamp: ts, rawTimestamp: raw + 10, professor: username
     });
-    store.removeLibraryItem(item.id);
-    refreshData(); notify("Avaliação concluída!");
+    await store.removeLibraryItem(item.id);
+    await refreshData(); notify("Avaliação concluída!");
   };
 
   return (

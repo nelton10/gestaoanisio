@@ -8,28 +8,28 @@ interface AtrasosTabProps {
   turmasExistentes: string[];
   username: string;
   notify: (msg: string) => void;
-  refreshData: () => void;
+  refreshData: () => Promise<void>;
 }
 
 const AtrasosTab: React.FC<AtrasosTabProps> = ({ alunos, turmasExistentes, username, notify, refreshData }) => {
   const [selectedTurma, setSelectedTurma] = useState('');
   const [selectedAlunosIds, setSelectedAlunosIds] = useState<string[]>([]);
 
-  const handleRegistrar = () => {
+  const handleRegistrar = async () => {
     if (!selectedAlunosIds.length) return notify("Selecione alunos.");
     const ts = new Date().toLocaleString('pt-PT');
     const raw = Date.now();
     for (const id of selectedAlunosIds) {
       const al = alunos.find(a => a.id === id);
       if (!al) continue;
-      store.addHistoryRecord({
+      await store.addHistoryRecord({
         id: store.generateId(), alunoId: al.id, alunoNome: al.nome, turma: al.turma,
         categoria: 'atraso', detalhe: 'Entrada tardia registada', timestamp: ts, rawTimestamp: raw,
         professor: username
       });
     }
     setSelectedAlunosIds([]);
-    refreshData();
+    await refreshData();
     notify("Entradas tardias registadas!");
   };
 

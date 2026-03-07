@@ -9,7 +9,7 @@ interface OcorrenciasTabProps {
   userRole: UserRole;
   username: string;
   notify: (msg: string) => void;
-  refreshData: () => void;
+  refreshData: () => Promise<void>;
 }
 
 const botoesOcorrencia = ['Passear no corredor', 'Saída sem autorização', 'Não faz a atividade', 'Sem material', 'Uso de Telemóvel', 'Entrou em sala atrasado', 'Conflito verbal', 'Atrapalhando a aula'];
@@ -46,7 +46,7 @@ const OcorrenciasTab: React.FC<OcorrenciasTabProps> = ({ alunos, turmasExistente
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const ts = new Date().toLocaleString('pt-PT');
     const raw = Date.now();
     for (const id of selectedAlunosIds) {
@@ -55,7 +55,7 @@ const OcorrenciasTab: React.FC<OcorrenciasTabProps> = ({ alunos, turmasExistente
       const items = registoSubTab === 'disciplina' ? ocorenciasSelecionadas : meritosSelecionados;
 
       for (let i = 0; i < items.length; i++) {
-        store.addHistoryRecord({
+        await store.addHistoryRecord({
           id: store.generateId(), alunoId: al.id, alunoNome: al.nome, turma: al.turma,
           categoria: registoSubTab === 'disciplina' ? 'ocorrencia' : 'merito',
           detalhe: `${items[i]} [${permanenciaStatus}]`, timestamp: ts, rawTimestamp: raw + i,
@@ -64,7 +64,7 @@ const OcorrenciasTab: React.FC<OcorrenciasTabProps> = ({ alunos, turmasExistente
       }
 
       if (customTexto) {
-        store.addHistoryRecord({
+        await store.addHistoryRecord({
           id: store.generateId(), alunoId: al.id, alunoNome: al.nome, turma: al.turma,
           categoria: registoSubTab === 'disciplina' ? 'ocorrencia' : 'merito',
           detalhe: `${customTexto} [${permanenciaStatus}]`, timestamp: ts, rawTimestamp: raw + items.length,
@@ -73,7 +73,7 @@ const OcorrenciasTab: React.FC<OcorrenciasTabProps> = ({ alunos, turmasExistente
       }
 
       if (items.length === 0 && !customTexto) {
-        store.addHistoryRecord({
+        await store.addHistoryRecord({
           id: store.generateId(), alunoId: al.id, alunoNome: al.nome, turma: al.turma,
           categoria: registoSubTab === 'disciplina' ? 'ocorrencia' : 'merito',
           detalhe: `Registo s/ detalhe [${permanenciaStatus}]`, timestamp: ts, rawTimestamp: raw,
@@ -83,7 +83,7 @@ const OcorrenciasTab: React.FC<OcorrenciasTabProps> = ({ alunos, turmasExistente
 
       if (registoSubTab === 'disciplina' && permanenciaStatus === 'Retirado de sala') {
         const motivos = [...items]; if (customTexto) motivos.push(customTexto);
-        store.addCoordinationItem({
+        await store.addCoordinationItem({
           id: store.generateId(), alunoId: al.id, alunoNome: al.nome, turma: al.turma,
           motivo: motivos.join(', ') || 'Retirado de sala', timestamp: ts, professor: username,
           fotoUrl: fotoOcorrencia
@@ -92,7 +92,7 @@ const OcorrenciasTab: React.FC<OcorrenciasTabProps> = ({ alunos, turmasExistente
     }
     setSelectedAlunosIds([]); setOcorenciasSelecionadas([]); setMeritosSelecionados([]);
     setCustomTexto(''); setFotoOcorrencia(null);
-    refreshData();
+    await refreshData();
     notify(`${registoSubTab === 'disciplina' ? 'Ocorrência' : 'Mérito'} registado!`);
   };
 

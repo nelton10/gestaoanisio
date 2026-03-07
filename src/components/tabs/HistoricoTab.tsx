@@ -8,7 +8,7 @@ interface HistoricoTabProps {
   turmasExistentes: string[];
   userRole: UserRole;
   notify: (msg: string) => void;
-  refreshData: () => void;
+  refreshData: () => Promise<void>;
 }
 
 const categoriaColors: Record<string, string> = {
@@ -59,7 +59,7 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({ records, turmasExistentes, 
             <p className="text-sm text-muted-foreground mb-6">{deleteConfirm.alunoNome}</p>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setDeleteConfirm(null)} className="py-3.5 bg-secondary rounded-2xl font-bold text-muted-foreground">Cancelar</button>
-              <button onClick={() => { store.deleteHistoryRecord(deleteConfirm.id); setDeleteConfirm(null); refreshData(); notify("Removido."); }}
+              <button onClick={async () => { await store.deleteHistoryRecord(deleteConfirm.id); setDeleteConfirm(null); await refreshData(); notify("Removido."); }}
                 className="py-3.5 bg-destructive text-destructive-foreground rounded-2xl font-bold shadow-lg active:scale-[0.98]">Apagar</button>
             </div>
           </div>
@@ -76,10 +76,10 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({ records, turmasExistentes, 
               className="w-full p-4 bg-secondary rounded-2xl border border-border outline-none mb-6 text-sm font-medium focus:bg-card focus:ring-2 focus:ring-primary/20 resize-none h-28 text-foreground" />
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setEditModal(null)} className="py-3.5 bg-secondary rounded-2xl font-bold text-muted-foreground">Cancelar</button>
-              <button onClick={() => {
+              <button onClick={async () => {
                 if (!editText.trim()) return notify("Texto vazio!");
-                store.updateHistoryRecord(editModal.id, { detalhe: editText });
-                setEditModal(null); refreshData(); notify("Atualizado!");
+                await store.updateHistoryRecord(editModal.id, { detalhe: editText });
+                setEditModal(null); await refreshData(); notify("Atualizado!");
               }} className="py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold shadow-lg active:scale-[0.98]">Salvar</button>
             </div>
           </div>

@@ -9,7 +9,7 @@ interface CoordTabProps {
   userRole: UserRole;
   username: string;
   notify: (msg: string) => void;
-  refreshData: () => void;
+  refreshData: () => Promise<void>;
 }
 
 const CoordTab: React.FC<CoordTabProps> = ({ coordinationQueue, suspensions, username, notify, refreshData }) => {
@@ -20,50 +20,50 @@ const CoordTab: React.FC<CoordTabProps> = ({ coordinationQueue, suspensions, use
   const [endSuspensionObs, setEndSuspensionObs] = useState('');
   const [fotoViewer, setFotoViewer] = useState<string | null>(null);
 
-  const handleAction = (item: CoordinationItem, type: string) => {
+  const handleAction = async (item: CoordinationItem, type: string) => {
     const now = new Date(); const ts = now.toLocaleString('pt-PT'); const raw = now.getTime();
-    store.addHistoryRecord({
+    await store.addHistoryRecord({
       id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
       categoria: 'coordenação', detalhe: `Ação de Coordenação: ${type.toUpperCase()}. OBS: ${coordObs || 'Nenhuma'}`,
       timestamp: ts, rawTimestamp: raw, professor: username, fotoUrl: item.fotoUrl
     });
     if (type === 'biblioteca') {
-      store.addLibraryItem({
+      await store.addLibraryItem({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
         timestamp: ts, professorCoord: username, obsCoord: coordObs, fotoUrl: item.fotoUrl
       });
     }
-    store.removeCoordinationItem(item.id);
-    setCoordObs(''); refreshData(); notify(`Ação registada: ${type.toUpperCase()}!`);
+    await store.removeCoordinationItem(item.id);
+    setCoordObs(''); await refreshData(); notify(`Ação registada: ${type.toUpperCase()}!`);
   };
 
-  const handleSuspend = () => {
+  const handleSuspend = async () => {
     if (!suspensionModal || !suspensionReturnDate) return notify("Insira a data de retorno!");
     const now = new Date(); const ts = now.toLocaleString('pt-PT'); const raw = now.getTime();
-    store.addHistoryRecord({
+    await store.addHistoryRecord({
       id: store.generateId(), alunoId: suspensionModal.alunoId, alunoNome: suspensionModal.alunoNome, turma: suspensionModal.turma,
       categoria: 'coordenação', detalhe: `SUSPENSÃO. Retorna dia: ${suspensionReturnDate.split('-').reverse().join('/')}. OBS: ${coordObs || 'Nenhuma'}`,
       timestamp: ts, rawTimestamp: raw, professor: username, fotoUrl: suspensionModal.fotoUrl
     });
-    store.addSuspension({
+    await store.addSuspension({
       id: store.generateId(), alunoId: suspensionModal.alunoId, alunoNome: suspensionModal.alunoNome,
       turma: suspensionModal.turma, returnDate: suspensionReturnDate, timestamp: ts
     });
-    store.removeCoordinationItem(suspensionModal.id);
+    await store.removeCoordinationItem(suspensionModal.id);
     setCoordObs(''); setSuspensionModal(null); setSuspensionReturnDate('');
-    refreshData(); notify("Suspensão aplicada!");
+    await refreshData(); notify("Suspensão aplicada!");
   };
 
-  const handleEndSuspension = () => {
+  const handleEndSuspension = async () => {
     if (!endSuspensionModal || !endSuspensionObs.trim()) return notify("Registe as observações!");
     const now = new Date(); const ts = now.toLocaleString('pt-PT'); const raw = now.getTime();
-    store.addHistoryRecord({
+    await store.addHistoryRecord({
       id: store.generateId(), alunoId: endSuspensionModal.alunoId, alunoNome: endSuspensionModal.alunoNome, turma: endSuspensionModal.turma,
       categoria: 'coordenação', detalhe: `SUSPENSÃO ENCERRADA. OBS: ${endSuspensionObs}`,
       timestamp: ts, rawTimestamp: raw, professor: username
     });
-    store.removeSuspension(endSuspensionModal.id);
-    setEndSuspensionModal(null); setEndSuspensionObs(''); refreshData(); notify("Suspensão encerrada!");
+    await store.removeSuspension(endSuspensionModal.id);
+    setEndSuspensionModal(null); setEndSuspensionObs(''); await refreshData(); notify("Suspensão encerrada!");
   };
 
   return (

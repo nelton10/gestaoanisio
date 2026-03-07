@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
 import {
   Aluno, ActiveExit, HistoryRecord, CoordinationItem, LibraryItem,
   Suspension, Aviso, AppConfig, UserRole, AuthState
@@ -21,17 +22,38 @@ export function useAppState() {
   const [activeTab, setActiveTab] = useState('saidas');
   const [showToast, setShowToast] = useState<string | null>(null);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const refreshData = useCallback(() => {
-    const cfg = store.getConfig();
-    setAlunos(cfg.alunosList || []);
-    setConfig({ autoBlocks: cfg.autoBlocks || [], exitLimitMinutes: cfg.exitLimitMinutes || 15, passwords: cfg.passwords || { admin: 'gestao', professor: 'prof', apoio: 'apoio' } });
-    setActiveExits(store.getActiveExits());
-    setRecords(store.getHistory());
-    setCoordinationQueue(store.getCoordinationQueue());
-    setLibraryQueue(store.getLibraryQueue());
-    setSuspensions(store.getSuspensions());
-    setAvisos(store.getAvisos());
+  const refreshData = useCallback(async () => {
+    try {
+      const cfg = await store.getConfig();
+      setAlunos(cfg.alunosList || []);
+      setConfig({
+        autoBlocks: cfg.autoBlocks || [],
+        exitLimitMinutes: cfg.exitLimitMinutes || 15,
+        passwords: cfg.passwords || { admin: 'gestao', professor: 'prof', apoio: 'apoio' }
+      });
+
+      const [exits, hist, coord, lib, susp, avs] = await Promise.all([
+        store.getActiveExits(),
+        store.getHistory(),
+        store.getCoordinationQueue(),
+        store.getLibraryQueue(),
+        store.getSuspensions(),
+        store.getAvisos()
+      ]);
+
+      setActiveExits(exits);
+      setRecords(hist);
+      setCoordinationQueue(coord);
+      setLibraryQueue(lib);
+      setSuspensions(susp);
+      setAvisos(avs);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -42,6 +64,22 @@ export function useAppState() {
     refreshData();
   }, [refreshData]);
 
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!authState.isAuthenticated) return;
+
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        refreshData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authState.isAuthenticated, refreshData]);
+
   useEffect(() => {
     const update = () => {
       const now = new Date();
@@ -51,13 +89,6 @@ export function useAppState() {
     const int = setInterval(update, 10000);
     return () => clearInterval(int);
   }, []);
-
-  // Poll localStorage for changes (since no Firebase realtime)
-  useEffect(() => {
-    if (!authState.isAuthenticated) return;
-    const int = setInterval(refreshData, 2000);
-    return () => clearInterval(int);
-  }, [authState.isAuthenticated, refreshData]);
 
   const notify = useCallback((msg: string) => {
     setShowToast(msg);
@@ -114,7 +145,7 @@ export function useAppState() {
 
   return {
     authState, alunos, activeExits, records, coordinationQueue, libraryQueue,
-    suspensions, avisos, config, activeTab, showToast, currentTimeStr,
+    suspensions, avisos, config, activeTab, showToast, currentTimeStr, isLoading,
     turmasExistentes, activeBlock, statsSummary,
     setActiveTab, notify, login, logout, refreshData, getTodayExitsCount,
   };

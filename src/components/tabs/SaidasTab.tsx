@@ -16,7 +16,7 @@ interface SaidasTabProps {
   activeBlock: { start: string; end: string; label: string } | null;
   getTodayExitsCount: (id: string) => number;
   notify: (msg: string) => void;
-  refreshData: () => void;
+  refreshData: () => Promise<void>;
 }
 
 const SaidasTab: React.FC<SaidasTabProps> = ({
@@ -35,41 +35,41 @@ const SaidasTab: React.FC<SaidasTabProps> = ({
   const locaisSaida = ["Banheiro", "Bebedouro", "Secretaria", "Coordenação", "Biblioteca", "Enfermaria"];
   const suspendedInTurma = suspensions.filter(s => s.turma === selectedTurma);
 
-  const finalizeExit = (exit: ActiveExit, registerOccurrence: boolean, elapsedMins = 0) => {
+  const finalizeExit = async (exit: ActiveExit, registerOccurrence: boolean, elapsedMins = 0) => {
     const dur = elapsedMins > 0 ? elapsedMins : Math.floor((Date.now() - exit.startTime) / 60000);
     const now = new Date();
     const ts = now.toLocaleString('pt-PT');
     const raw = now.getTime();
 
-    store.addHistoryRecord({
+    await store.addHistoryRecord({
       id: store.generateId(), alunoId: exit.alunoId, alunoNome: exit.alunoNome, turma: exit.turma,
       categoria: 'saida', detalhe: `${exit.destino} (${dur} min)${exit.isEmergency ? ' [EMERGÊNCIA]' : ''}`,
       timestamp: ts, rawTimestamp: raw, professor: exit.professor || username, autorRole: exit.autorRole || userRole
     });
 
     if (registerOccurrence) {
-      store.addHistoryRecord({
+      await store.addHistoryRecord({
         id: store.generateId(), alunoId: exit.alunoId, alunoNome: exit.alunoNome, turma: exit.turma,
         categoria: 'ocorrencia', detalhe: `Demora na saída (${dur} min) - Destino: ${exit.destino}`,
         timestamp: ts, rawTimestamp: raw + 1, professor: exit.professor || username, autorRole: exit.autorRole || userRole
       });
     }
 
-    store.removeActiveExit(exit.id);
+    await store.removeActiveExit(exit.id);
     setOvertimeModal(null);
-    refreshData();
+    await refreshData();
     notify("Retorno registado.");
   };
 
-  const handleReturnClick = (exit: ActiveExit) => {
+  const handleReturnClick = async (exit: ActiveExit) => {
     const elapsedSecs = Math.floor((Date.now() - exit.startTime) / 1000);
     const limitSecs = Number(config.exitLimitMinutes) * 60;
     const elapsedMins = Math.floor(elapsedSecs / 60);
     if (elapsedSecs > limitSecs) setOvertimeModal({ exit, elapsedMinutes: elapsedMins });
-    else finalizeExit(exit, false);
+    else await finalizeExit(exit, false);
   };
 
-  const attemptReturn = (exit: ActiveExit, isDemorou: boolean) => {
+  const attemptReturn = async (exit: ActiveExit, isDemorou: boolean) => {
     const elapsedSecs = Math.floor((Date.now() - exit.startTime) / 1000);
     const limitSecs = Number(config.exitLimitMinutes) * 60;
     if (userRole === 'aluno' && elapsedSecs > limitSecs && !isDemorou) {
@@ -77,36 +77,36 @@ const SaidasTab: React.FC<SaidasTabProps> = ({
       return;
     }
     if (exit.professor === username || userRole === 'admin') {
-      if (isDemorou) finalizeExit(exit, true);
-      else handleReturnClick(exit);
+      if (isDemorou) await finalizeExit(exit, true);
+      else await handleReturnClick(exit);
     } else {
       setAuthReturnModal({ exit, isDemorou });
       setAuthReturnPassword('');
     }
   };
 
-  const confirmAuthReturn = () => {
+  const confirmAuthReturn = async () => {
     if (!authReturnModal) return;
     if (authReturnPassword.toLowerCase() === 'ok') {
-      if (authReturnModal.isDemorou) finalizeExit(authReturnModal.exit, true);
-      else handleReturnClick(authReturnModal.exit);
+      if (authReturnModal.isDemorou) await finalizeExit(authReturnModal.exit, true);
+      else await handleReturnClick(authReturnModal.exit);
       setAuthReturnModal(null);
     } else {
       notify("Senha incorreta!");
     }
   };
 
-  const handleNewExit = () => {
+  const handleNewExit = async () => {
     const a = alunos.find(x => x.id === selectedAlunoId);
     if (!a) return notify("Selecione um aluno.");
-    store.addActiveExit({
+    await store.addActiveExit({
       id: store.generateId(), alunoId: a.id, alunoNome: a.nome, turma: a.turma,
       destino: destinoSaida, startTime: Date.now(), professor: username,
       autorRole: userRole, isEmergency: !!activeBlock && isEmergencyMode
     });
     setSelectedAlunoId('');
     setIsEmergencyMode(false);
-    refreshData();
+    await refreshData();
     notify(activeBlock && isEmergencyMode ? "Emergência Registada!" : "Saída Autorizada!");
   };
 
@@ -272,11 +272,11 @@ const SaidasTab: React.FC<SaidasTabProps> = ({
             <div className="glass rounded-3xl p-5 shadow-lg space-y-3">
               <textarea className="w-full p-4 bg-secondary rounded-2xl border border-border outline-none font-medium text-sm resize-none h-24 focus:bg-card focus:ring-2 focus:ring-primary/20 transition-all text-foreground"
                 placeholder="Escreva um aviso para os professores e gestão..." value={novoAvisoTexto} onChange={e => setNovoAvisoTexto(e.target.value)} />
-              <button onClick={() => {
+              <button onClick={async () => {
                 if (!novoAvisoTexto.trim()) return notify("Escreva uma mensagem.");
-                store.addAviso({ id: store.generateId(), texto: novoAvisoTexto, autor: username, timestamp: new Date().toLocaleString('pt-PT'), rawTimestamp: Date.now() });
+                await store.addAviso({ id: store.generateId(), texto: novoAvisoTexto, autor: username, timestamp: new Date().toLocaleString('pt-PT'), rawTimestamp: Date.now() });
                 setNovoAvisoTexto('');
-                refreshData();
+                await refreshData();
                 notify("Aviso publicado!");
               }} className="w-full py-3.5 bg-foreground text-background rounded-2xl font-bold shadow-lg active:scale-[0.98] transition-all text-xs">
                 PUBLICAR AVISO
@@ -311,7 +311,7 @@ const SaidasTab: React.FC<SaidasTabProps> = ({
                     <p className="text-sm text-foreground ml-2 font-medium whitespace-pre-wrap">{aviso.texto}</p>
                     {userRole === 'admin' && (
                       <div className="mt-4 flex justify-end">
-                        <button onClick={() => { store.removeAviso(aviso.id); refreshData(); notify("Aviso removido."); }}
+                        <button onClick={async () => { await store.removeAviso(aviso.id); await refreshData(); notify("Aviso removido."); }}
                           className="text-destructive/60 hover:text-destructive flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 bg-destructive/5 hover:bg-destructive/10 rounded-lg transition-colors">
                           <Trash2 size={12} strokeWidth={2.5} /> Apagar
                         </button>
