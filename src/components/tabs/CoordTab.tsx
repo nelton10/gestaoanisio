@@ -38,20 +38,25 @@ const CoordTab: React.FC<CoordTabProps> = ({ coordinationQueue, suspensions, use
   };
 
   const handleSuspend = async () => {
-    if (!suspensionModal || !suspensionReturnDate) return notify("Insira a data de retorno!");
-    const now = new Date(); const ts = now.toLocaleString('pt-PT'); const raw = now.getTime();
-    await store.addHistoryRecord({
-      id: store.generateId(), alunoId: suspensionModal.alunoId, alunoNome: suspensionModal.alunoNome, turma: suspensionModal.turma,
-      categoria: 'coordenação', detalhe: `SUSPENSÃO. Retorna dia: ${suspensionReturnDate.split('-').reverse().join('/')}. OBS: ${coordObs || 'Nenhuma'}`,
-      timestamp: ts, rawTimestamp: raw, professor: username, fotoUrl: suspensionModal.fotoUrl
-    });
-    await store.addSuspension({
-      id: store.generateId(), alunoId: suspensionModal.alunoId, alunoNome: suspensionModal.alunoNome,
-      turma: suspensionModal.turma, returnDate: suspensionReturnDate, timestamp: ts
-    });
-    await store.removeCoordinationItem(suspensionModal.id);
-    setCoordObs(''); setSuspensionModal(null); setSuspensionReturnDate('');
-    await refreshData(); notify("Suspensão aplicada!");
+    try {
+      if (!suspensionModal || !suspensionReturnDate) return notify("Insira a data de retorno!");
+      const now = new Date(); const ts = now.toLocaleString('pt-PT'); const raw = now.getTime();
+      await store.addHistoryRecord({
+        id: store.generateId(), alunoId: suspensionModal.alunoId, alunoNome: suspensionModal.alunoNome, turma: suspensionModal.turma,
+        categoria: 'coordenação', detalhe: `SUSPENSÃO. Retorna dia: ${suspensionReturnDate.split('-').reverse().join('/')}. OBS: ${coordObs || 'Nenhuma'}`,
+        timestamp: ts, rawTimestamp: raw, professor: username, fotoUrl: suspensionModal.fotoUrl
+      });
+      await store.addSuspension({
+        id: store.generateId(), alunoId: suspensionModal.alunoId, alunoNome: suspensionModal.alunoNome,
+        turma: suspensionModal.turma, returnDate: suspensionReturnDate, timestamp: ts
+      });
+      await store.removeCoordinationItem(suspensionModal.id);
+      setCoordObs(''); setSuspensionModal(null); setSuspensionReturnDate('');
+      await refreshData(); notify("Suspensão aplicada!");
+    } catch (e: any) {
+      console.error(e);
+      notify("Erro ao suspender: " + e.message);
+    }
   };
 
   const handleEndSuspension = async () => {
