@@ -137,7 +137,7 @@ const OcorrenciasTab: React.FC<OcorrenciasTabProps> = ({ alunos, turmasExistente
         <div className="flex gap-2 p-1.5 bg-secondary rounded-2xl border border-border">
           <button onClick={() => setPermanenciaStatus('Retirado de sala')}
             className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${permanenciaStatus === 'Retirado de sala' ? 'bg-destructive text-destructive-foreground shadow-md' : 'text-muted-foreground hover:bg-muted'}`}>
-            Foi Retirado
+            Retirado de Sala (SLA)
           </button>
           <button onClick={() => setPermanenciaStatus('Continuará em sala')}
             className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${permanenciaStatus === 'Continuará em sala' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:bg-muted'}`}>

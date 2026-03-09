@@ -16,17 +16,17 @@ const BibliotecaTab: React.FC<BibliotecaTabProps> = ({ libraryQueue, username, n
     if (actionType === 'nao_apareceu') {
       await store.addHistoryRecord({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
-        categoria: 'ocorrencia', detalhe: 'Faltou à biblioteca após encaminhamento.',
+        categoria: 'ocorrencia', detalhe: 'NÃO APARECEU NA BIBLIOTECA após encaminhamento.',
         timestamp: ts, rawTimestamp: raw, professor: username
       });
       await store.addCoordinationItem({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
-        motivo: "NÃO APARECEU NA BIBLIOTECA (REINCIDENTE)", timestamp: ts, professor: username
+        motivo: "NÃO APARECEU NA BIBLIOTECA (REINCIDENTE - VOLTA PARA COORDENAÇÃO)", timestamp: ts, professor: username
       });
     } else if (actionType === 'negativo') {
       await store.addHistoryRecord({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
-        categoria: 'ocorrencia', detalhe: 'Comportamento negativo na biblioteca.',
+        categoria: 'ocorrencia', detalhe: 'Desempenho negativo na biblioteca.',
         timestamp: ts, rawTimestamp: raw, professor: username
       });
     }
