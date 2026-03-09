@@ -11,6 +11,7 @@ import BibliotecaTab from '@/components/tabs/BibliotecaTab';
 import PesquisaTab from '@/components/tabs/PesquisaTab';
 import AnaliseTab from '@/components/tabs/AnaliseTab';
 import AdminTab from '@/components/tabs/AdminTab';
+import AlunosTab from '@/components/tabs/AlunosTab';
 
 const Index = () => {
   const state = useAppState();
@@ -85,6 +86,10 @@ const Index = () => {
         )}
         {state.activeTab === 'acompanhamento' && (
           <AnaliseTab records={state.records} turmasExistentes={state.turmasExistentes} statsSummary={state.statsSummary} />
+        )}
+        {state.activeTab === 'alunos' && (
+          <AlunosTab alunos={state.alunos} turmasExistentes={state.turmasExistentes}
+            notify={state.notify} refreshData={state.refreshData} />
         )}
         {state.activeTab === 'admin' && (
           <AdminTab alunos={state.alunos} history={state.records} config={state.config}

@@ -39,6 +39,7 @@ const tabs: { id: string; label: string; icon: typeof Clock; hideFor?: string[];
   { id: 'medidas', label: 'Biblioteca', icon: Library, hideFor: ['aluno'], badge: 'libraryCount' },
   { id: 'pesquisa', label: 'Pesquisa', icon: Search, hideFor: ['aluno'] },
   { id: 'acompanhamento', label: 'Análise', icon: BarChart3, hideFor: ['professor', 'aluno'] },
+  { id: 'alunos', label: 'Alunos', icon: GraduationCap, hideFor: ['professor', 'aluno'] },
   { id: 'admin', label: 'Config', icon: Settings, hideFor: ['professor', 'aluno'] },
 ];
 
@@ -57,8 +58,8 @@ export const TabNav: React.FC<TabNavProps> = ({ activeTab, setActiveTab, userRol
               onClick={() => setActiveTab(t.id)}
               className={`flex-1 min-w-[80px] py-2.5 rounded-xl text-[11px] font-bold flex flex-col items-center gap-1 relative transition-all duration-200
               ${activeTab === t.id
-                ? 'bg-primary text-primary-foreground shadow-md'
-                : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
             >
               <Icon size={16} strokeWidth={activeTab === t.id ? 2.5 : 2} />
               {t.label}
