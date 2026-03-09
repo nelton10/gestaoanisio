@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Library, UserX, UserMinus, Check } from 'lucide-react';
 import * as store from '@/lib/store';
 import { LibraryItem } from '@/types';
@@ -11,22 +11,30 @@ interface BibliotecaTabProps {
 }
 
 const BibliotecaTab: React.FC<BibliotecaTabProps> = ({ libraryQueue, username, notify, refreshData }) => {
+  const [libraryObs, setLibraryObs] = useState<{ [key: string]: string }>({});
+
+  const handleObsChange = (id: string, value: string) => {
+    setLibraryObs(prev => ({ ...prev, [id]: value }));
+  };
+
   const handleAction = async (item: LibraryItem, actionType: string) => {
     const now = new Date(); const ts = now.toLocaleString('pt-PT'); const raw = now.getTime();
+    const obs = libraryObs[item.id] || 'Nenhuma observação';
+
     if (actionType === 'nao_apareceu') {
       await store.addHistoryRecord({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
-        categoria: 'ocorrencia', detalhe: 'NÃO APARECEU NA BIBLIOTECA após encaminhamento.',
+        categoria: 'ocorrencia', detalhe: `NÃO APARECEU NA BIBLIOTECA após encaminhamento. OBS: ${obs}`,
         timestamp: ts, rawTimestamp: raw, professor: username
       });
       await store.addCoordinationItem({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
-        motivo: "NÃO APARECEU NA BIBLIOTECA (REINCIDENTE - VOLTA PARA COORDENAÇÃO)", timestamp: ts, professor: username
+        motivo: `NÃO APARECEU NA BIBLIOTECA (REINCIDENTE - VOLTA PARA COORDENAÇÃO) OBS: ${obs}`, timestamp: ts, professor: username
       });
     } else if (actionType === 'negativo') {
       await store.addHistoryRecord({
         id: store.generateId(), alunoId: item.alunoId, alunoNome: item.alunoNome, turma: item.turma,
-        categoria: 'ocorrencia', detalhe: 'Desempenho negativo na biblioteca.',
+        categoria: 'ocorrencia', detalhe: `Desempenho negativo na biblioteca. OBS: ${obs}`,
         timestamp: ts, rawTimestamp: raw, professor: username
       });
     }
@@ -35,6 +43,8 @@ const BibliotecaTab: React.FC<BibliotecaTabProps> = ({ libraryQueue, username, n
       categoria: 'medida', detalhe: `BIBLIOTECA: Resultado ${actionType.toUpperCase()}`,
       timestamp: ts, rawTimestamp: raw + 10, professor: username
     });
+
+    setLibraryObs(prev => { const newObs = { ...prev }; delete newObs[item.id]; return newObs; });
     await store.removeLibraryItem(item.id);
     await refreshData(); notify("Avaliação concluída!");
   };
@@ -55,9 +65,17 @@ const BibliotecaTab: React.FC<BibliotecaTabProps> = ({ libraryQueue, username, n
                 <p className="font-extrabold text-foreground text-base">{i.alunoNome}</p>
                 <span className="text-[10px] font-extrabold uppercase text-accent bg-accent/10 px-2 py-1 rounded-lg">{i.turma}</span>
               </div>
-              <div className="bg-secondary p-3.5 rounded-2xl border border-border mb-5">
+              <div className="bg-secondary p-3.5 rounded-2xl border border-border mb-3">
                 <p className="text-[11px] font-medium text-muted-foreground italic">"{i.obsCoord || "Sem observações da gestão."}"</p>
               </div>
+
+              <textarea
+                placeholder="Comentário sobre a avaliação da biblioteca..."
+                className="w-full p-4 text-xs bg-card rounded-2xl border border-border h-20 mb-4 outline-none focus:ring-2 focus:ring-accent/20 resize-none text-foreground"
+                value={libraryObs[i.id] || ''}
+                onChange={e => handleObsChange(i.id, e.target.value)}
+              />
+
               <div className="grid grid-cols-3 gap-2.5">
                 <button onClick={() => handleAction(i, 'nao_apareceu')}
                   className="flex flex-col items-center justify-center gap-1.5 py-3.5 bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-xl border border-destructive/10 active:scale-95 transition-all">
