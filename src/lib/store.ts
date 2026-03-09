@@ -168,6 +168,7 @@ export async function addHistoryRecord(record: HistoryRecord) {
     turma: record.turma,
     categoria: record.categoria,
     detalhe: record.detalhe,
+    timestamp: record.timestamp,
     raw_timestamp: record.rawTimestamp,
     professor: record.professor,
     autor_role: record.autorRole,
