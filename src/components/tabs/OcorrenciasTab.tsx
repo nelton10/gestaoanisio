@@ -91,7 +91,7 @@ const OcorrenciasTab: React.FC<OcorrenciasTabProps> = ({ alunos, turmasExistente
       }
     }
     setSelectedAlunosIds([]); setOcorenciasSelecionadas([]); setMeritosSelecionados([]);
-    setCustomTexto(''); setFotoOcorrencia(null);
+    setCustomTexto(''); setFotoOcorrencia(null); setPermanenciaStatus('Continuará em sala');
     await refreshData();
     notify(`${registoSubTab === 'disciplina' ? 'Ocorrência' : 'Mérito'} registado!`);
   };

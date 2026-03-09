@@ -232,7 +232,8 @@ export async function addCoordinationItem(item: CoordinationItem) {
     turma: item.turma,
     motivo: item.motivo,
     professor: item.professor,
-    foto_url: item.fotoUrl
+    foto_url: item.fotoUrl,
+    timestamp: item.timestamp
   };
   await handleResponse(
     supabase.from('coordination_queue').insert([dbItem]),
@@ -274,7 +275,8 @@ export async function addLibraryItem(item: LibraryItem) {
     turma: item.turma,
     professor_coord: item.professorCoord,
     obs_coord: item.obsCoord,
-    foto_url: item.fotoUrl
+    foto_url: item.fotoUrl,
+    timestamp: item.timestamp
   };
   await handleResponse(
     supabase.from('library_queue').insert([dbItem]),
