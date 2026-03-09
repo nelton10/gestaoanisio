@@ -316,7 +316,8 @@ export async function addSuspension(s: Suspension) {
     aluno_id: s.alunoId,
     aluno_nome: s.alunoNome,
     turma: s.turma,
-    return_date: s.returnDate
+    return_date: s.returnDate,
+    timestamp: s.timestamp
   };
   await handleResponse(
     supabase.from('suspensions').insert([dbS]),
